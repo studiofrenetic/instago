@@ -7,7 +7,7 @@ import "fmt"
 //userID: a string representing the ID (not the username) of a given user
 func (api InstagramAPI) UserDetail(userID string) User {
 	params := getEmptyMap()
-	result := api.DoRequest("users/" + userID, params)
+	result := api.DoRequest("users/"+userID, params)
 	data := result.Object("data")
 	return UserFromAPI(data)
 }
@@ -42,7 +42,7 @@ func (api InstagramAPI) SearchUsers(query string, max int) []User {
 //
 //after: (optional = "") posts after a certain ID
 func (api InstagramAPI) RecentPostsByUser(userId string, max int, before, after string) []Image {
-	return api.GenericImageListRequest("users/" + userId + "/media/recent", before, after, max)
+	return api.GenericImageListRequest("users/"+userId+"/media/recent", before, after, max)
 }
 
 //Gets the current user's feed (requires OAuth)

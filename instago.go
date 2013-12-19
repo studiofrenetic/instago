@@ -3,15 +3,15 @@
 package instago
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
-	"io"
 	"os"
-	"io/ioutil"
-	"encoding/json"
-	"time"
 	"strconv"
-	"fmt"
+	"time"
 )
 
 //The InstagramAPI object stores your credentials. You can obtain a ClientID from
@@ -21,47 +21,47 @@ import (
 //ignored (even if the request fails). You should create an InstagramAPI struct with
 //at least one of these values
 type InstagramAPI struct {
-	ClientID string
+	ClientID    string
 	AccessToken string
 }
 
 //Represents an image response from Instagram's servers including key details about the
 //image. Comments are currently not included.
 type Image struct {
-	Filter string
-	Tags []string
-	Link string
-	LowResolution string
-	Thumbnail string
+	Filter             string
+	Tags               []string
+	Link               string
+	LowResolution      string
+	Thumbnail          string
 	StandardResolution string
-	User string
-	UserID string
-	Name string
-	Caption string
-	CreationTime time.Time
-	ID string
-	Likes int
-	Comments int
-	Location Location
+	User               string
+	UserID             string
+	Name               string
+	Caption            string
+	CreationTime       time.Time
+	ID                 string
+	Likes              int
+	Comments           int
+	Location           Location
 }
 
 //Represents a user response from Instagram's servers. This may come from an image,
 //comment or directly from a user request (N.B. these kind of requests require OAuth)
 type User struct {
-	ID string
-	Username string
-	FullName string
+	ID             string
+	Username       string
+	FullName       string
 	ProfilePicture string
-	Bio string
-	Website string
-	TotalImages int
-	TotalFollows int
+	Bio            string
+	Website        string
+	TotalImages    int
+	TotalFollows   int
 	TotalFollowers int
 }
 
 //Represents a tag and the total number of images with that tag
 type Tag struct {
-	Tag string
+	Tag        string
 	MediaCount int
 }
 
@@ -69,13 +69,21 @@ type Tag struct {
 //a specific location, such as a bar, museum, company, etc. This type represents the
 //responses from Instagram's servers.
 type Location struct {
-	ID string
-	Name string
-	Latitude float64
+	ID        string
+	Name      string
+	Latitude  float64
 	Longitude float64
 }
 
-//This will does all GET requests (all Instagram API requests that do not require 
+type Pagination struct {
+	NextMaxTagId string
+	NextMaxId    string
+	NextMinId    string
+	MinTagId     string
+	NextUrl      string
+}
+
+//This will does all GET requests (all Instagram API requests that do not require
 //authentication are GET requests anyway). It returns the JSON object in case of success
 //or an empty object in case of failure
 //
@@ -84,7 +92,7 @@ type Location struct {
 //params: The parameters you may want to add
 func (api InstagramAPI) DoRequest(endpoint string, params map[string]string) JSON {
 	var contents []byte
-	
+
 	fullURL := api.GetURLForRequest(endpoint, params)
 	resp, err := http.Get(fullURL)
 	if err != nil {
@@ -98,7 +106,7 @@ func (api InstagramAPI) DoRequest(endpoint string, params map[string]string) JSO
 	//fmt.Println(string(contents))
 	var jsonResponse JSON
 	json.Unmarshal(contents, &jsonResponse)
-	
+
 	return jsonResponse
 }
 
@@ -134,7 +142,7 @@ func (api InstagramAPI) GetURLForRequest(endpoint string, params map[string]stri
 //data: a JSON object that represents an image
 func ImageFromAPI(data JSON) Image {
 	var image Image
-	
+
 	//Basic information on the image
 	image.Filter = data.String("filter")
 	image.Tags = data.StringArray("tags")
@@ -142,35 +150,35 @@ func ImageFromAPI(data JSON) Image {
 	image.ID = data.String("id")
 	image.Likes = data.Object("likes").Int("count")
 	image.Comments = data.Object("comments").Int("count")
-	
+
 	//Image caption
 	caption := data.Object("caption")
 	image.Caption = caption.String("text")
-	
+
 	//Creation time
 	t, _ := strconv.ParseInt(data.String("created_time"), 0, 0)
 	image.CreationTime = time.Unix(t, 0)
-	
+
 	//User detail
 	user := data.Object("user")
 	image.User = user.String("username")
 	image.Name = user.String("full_name")
 	image.UserID = user.String("id")
-	
+
 	images := data.Object("images")
-	
+
 	lowRes := images.Object("low_resolution")
 	image.LowResolution = lowRes.String("url")
-	
+
 	thumbnail := images.Object("thumbnail")
 	image.Thumbnail = thumbnail.String("url")
-	
+
 	standardRes := images.Object("standard_resolution")
 	image.StandardResolution = standardRes.String("url")
-	
+
 	location := data.Object("location")
 	image.Location = LocationFromAPI(location)
-	
+
 	return image
 }
 
@@ -202,6 +210,18 @@ func UserFromAPI(data JSON) User {
 	user.TotalFollows = data.Object("counts").Int("follows")
 	user.TotalFollowers = data.Object("counts").Int("followed_by")
 	return user
+}
+
+//Takes a generic location API JSON response and returns a Location
+func PaginationFromAPI(pagination JSON) Pagination {
+	p := Pagination{}
+	// p.next_max_tag_id = location.Float("longitude")
+	p.NextMaxTagId = pagination.String("next_max_tag_id")
+	p.NextMaxId = pagination.String("next_max_id")
+	p.NextMinId = pagination.String("next_min_id")
+	p.MinTagId = pagination.String("min_tag_id")
+	p.NextUrl = pagination.String("next_url")
+	return p
 }
 
 //Many queries to Instagram's API simply return a list of images (tag, user, location, etc)
@@ -246,7 +266,7 @@ func Download(url, saveFile string) {
 		return
 	}
 	defer out.Close()
-	
+
 	resp, err := http.Get(url)
 	if err == nil {
 		defer resp.Body.Close()
@@ -256,6 +276,6 @@ func Download(url, saveFile string) {
 
 //Most of the API functions have to get make a map[string] string for parameters so this
 //utlility function saves them all having to do it
-func getEmptyMap() map[string]string{
+func getEmptyMap() map[string]string {
 	return make(map[string]string, 0)
 }

@@ -7,7 +7,7 @@ import "fmt"
 //mediaId: A string representing the ID of the image to get info on
 func (api InstagramAPI) Media(mediaId string) Image {
 	params := getEmptyMap()
-	response := api.DoRequest("media/" + mediaId, params)
+	response := api.DoRequest("media/"+mediaId, params)
 	return ImageFromAPI(response.Object("data"))
 }
 

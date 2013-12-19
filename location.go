@@ -7,7 +7,7 @@ import "fmt"
 //locationId: The id of a location to lookup
 func (api InstagramAPI) Location(locationId string) Location {
 	params := getEmptyMap()
-	response := api.DoRequest("locations/" + locationId, params)
+	response := api.DoRequest("locations/"+locationId, params)
 	return LocationFromAPI(response.Object("data"))
 }
 
@@ -19,7 +19,7 @@ func (api InstagramAPI) Location(locationId string) Location {
 //
 //afterPost: (optional = "") posts after this ID
 func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) []Image {
-	return api.GenericImageListRequest("locations/" + locationId + "/media/recent", beforePost, afterPost, 0)
+	return api.GenericImageListRequest("locations/"+locationId+"/media/recent", beforePost, afterPost, 0)
 }
 
 //Gets a list of locations near a give latitude/longitude within a certain distance

@@ -11,19 +11,20 @@ import (
 //before: (optional - use "") find photos posted before this ID (use Image.ID)
 //
 //after: (optional - use "") find photos posted after this ID (use Image.ID)
-func (api InstagramAPI) TagRecent(tag, before, after string) ([]Image, Pagination) {
+func (api InstagramAPI) TagRecent(tag, before, after string, max int) ([]Image, Pagination) {
 	// return api.GenericImageListRequest("tags/"+tag+"/media/recent", before, after, 0)
-	var max int
+	// var max int
 	params := getEmptyMap()
 	if max > 0 {
 		params["count"] = fmt.Sprintf("%d", max)
 	}
 	if before != "" {
-		params["max_id"] = before
+		params["max_tag_id"] = before
 	}
 	if after != "" {
-		params["min_id"] = after
+		params["min_tag_id"] = after
 	}
+
 	results := api.DoRequest("tags/"+tag+"/media/recent", params)
 	data := results.ObjectArray("data")
 	images := make([]Image, 0)

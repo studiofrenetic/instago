@@ -18,8 +18,9 @@ func (api InstagramAPI) Location(locationId string) Location {
 //beforePost: (optional = "") posts before this ID
 //
 //afterPost: (optional = "") posts after this ID
-func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) []Image {
-	return api.GenericImageListRequest("locations/"+locationId+"/media/recent", beforePost, afterPost, 0)
+func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) []Media {
+	media, _, _ := api.GenericMediaListRequest("locations/"+locationId+"/media/recent", beforePost, afterPost, 0)
+	return media
 }
 
 //Gets a list of locations near a give latitude/longitude within a certain distance

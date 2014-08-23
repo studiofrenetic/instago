@@ -20,15 +20,15 @@ _cgo_export.*
 _testmain.go
 
 *.exe
-tagdemo
+tag
 *.txt
 *.png
 *.jpg
 *bot
 *bot.go
-userdemo
+user
 saved/
-locationsdemo
-mediademo
+locations
+media
 
 .DS_STORE

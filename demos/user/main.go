@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/programmingthomas/instago"
 	"fmt"
+	"github.com/mbelousov/instago"
 	"io/ioutil"
 )
 
@@ -11,23 +11,32 @@ func main() {
 	api := instago.InstagramAPI{}
 	clientId, _ := ioutil.ReadFile("config.txt")
 	api.ClientID = string(clientId)
-	
+
 	fmt.Println("INSTAGO  DEMO")
 	fmt.Println("=============")
 	fmt.Println("Enter a user:")
-	
+
 	var query string
 	fmt.Scan(&query)
-	
+
 	//Search the users
-	users := api.SearchUsers(query, 0)
+	users, pagination, err := api.SearchUsers(query, 0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	for _, user := range users {
 		fmt.Println("Username:", user.Username, "Full Name:", user.FullName)
 	}
-	
+	fmt.Println(pagination)
 	//Present basic inforamtion about the user
 	fmt.Println("More detail on @" + users[0].Username)
-	user := api.UserDetail(users[0].ID)
+	user, err := api.UserDetail(users[0].ID)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	fmt.Println("ID:", user.ID)
 	fmt.Println("Username:", user.Username)
 	fmt.Println("Full name:", user.FullName)
@@ -35,5 +44,5 @@ func main() {
 	fmt.Println("Website:", user.Website)
 	fmt.Println("Follows:", user.TotalFollows)
 	fmt.Println("Followers:", user.TotalFollowers)
-	fmt.Println("Images:", user.TotalImages)
+	fmt.Println("Media:", user.TotalMedia)
 }

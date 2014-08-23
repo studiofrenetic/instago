@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/studiofrenetic/instago"
+	"github.com/mbelousov/instago"
 	"io/ioutil"
 )
 
@@ -22,13 +22,24 @@ func main() {
 	tagInfo := api.TagInfo(tag)
 	fmt.Println("Tag: ", tagInfo.Tag, "Total: ", tagInfo.MediaCount)
 
-	images, pagination := api.TagRecent(tag, "", "")
+	images, pagination, err := api.TagRecent(tag, "", "", 0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	for _, img := range images {
 		fmt.Println(img.User, img.Filter)
 	}
+	fmt.Println(pagination)
 
 	fmt.Println("Similar tags")
-	tags := api.TagSearch(tag)
+	tags, pagination, err := api.TagSearch(tag)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
 	for _, tag := range tags {
 		fmt.Println("Tag: ", tag.Tag, "Total: ", tag.MediaCount)
 	}

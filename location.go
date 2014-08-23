@@ -18,9 +18,8 @@ func (api InstagramAPI) Location(locationId string) Location {
 //beforePost: (optional = "") posts before this ID
 //
 //afterPost: (optional = "") posts after this ID
-func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) []Media {
-	media, _, _ := api.GenericMediaListRequest("locations/"+locationId+"/media/recent", beforePost, afterPost, 0)
-	return media
+func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) ([]Media, Pagination, error) {
+	return api.GenericMediaListRequest("locations/"+locationId+"/media/recent", beforePost, afterPost, 0)
 }
 
 //Gets a list of locations near a give latitude/longitude within a certain distance
@@ -30,7 +29,7 @@ func (api InstagramAPI) LocationPosts(locationId, beforePost, afterPost string) 
 //long: The longitude to search near
 //
 //distance: (optional = 0) The number of meters to search within
-func (api InstagramAPI) LocationsNear(lat, long, distance float64) []Location {
+func (api InstagramAPI) LocationsNear(lat, long, distance float64) ([]Location, Pagination, error) {
 	params := getEmptyMap()
 	if distance > 0 {
 		params["distance"] = fmt.Sprintf("%f", distance)
@@ -43,5 +42,8 @@ func (api InstagramAPI) LocationsNear(lat, long, distance float64) []Location {
 	for _, loc := range data {
 		locations = append(locations, LocationFromAPI(loc))
 	}
-	return locations
+	pagination := PaginationFromAPI(results.Object("pagination"))
+	err := api.ErrorFromAPI(results)
+
+	return locations, pagination, err
 }

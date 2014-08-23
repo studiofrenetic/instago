@@ -17,7 +17,7 @@ func (api InstagramAPI) UserDetail(userID string) (User, error) {
 //query: The description such as 'jack' or 'thomas' to search for
 //
 //max: (optional, default = 0) the number of users to return
-func (api InstagramAPI) SearchUsers(query string, max int) ([]User, error) {
+func (api InstagramAPI) SearchUsers(query string, max int) ([]User, Pagination, error) {
 	params := getEmptyMap()
 	params["q"] = query
 	if max > 0 {
@@ -29,7 +29,10 @@ func (api InstagramAPI) SearchUsers(query string, max int) ([]User, error) {
 	for _, user := range data {
 		users = append(users, UserFromAPI(user))
 	}
-	return users, api.ErrorFromAPI(result)
+	pagination := PaginationFromAPI(result.Object("pagination"))
+	err := api.ErrorFromAPI(result)
+
+	return users, pagination, err
 }
 
 //Will return an array of recently posted media objects by a user. Requires OAuth
@@ -52,9 +55,8 @@ func (api InstagramAPI) RecentPostsByUser(userId string, max int, before, after 
 //after: (optional = "") posts after a certain ID
 //
 //max: (optional = 0) the greatest number of media objects to return
-func (api InstagramAPI) Feed(before, after string, max int) []Media {
-	media, _, _ := api.GenericMediaListRequest("users/self/feed", before, after, max)
-	return media
+func (api InstagramAPI) Feed(before, after string, max int) ([]Media, Pagination, error) {
+	return api.GenericMediaListRequest("users/self/feed", before, after, max)
 }
 
 //Gets the posts like by the current user (requires OAuth)
@@ -62,7 +64,6 @@ func (api InstagramAPI) Feed(before, after string, max int) []Media {
 //max: (optional = 0) the greatest number of posts to return
 //
 //before: (optional = 0) posts liked before a certain media ID
-func (api InstagramAPI) Liked(max int, before string) []Media {
-	media, _, _ := api.GenericMediaListRequest("users/self/media/liked", before, "", max)
-	return media
+func (api InstagramAPI) Liked(max int, before string) ([]Media, Pagination, error) {
+	return api.GenericMediaListRequest("users/self/media/liked", before, "", max)
 }

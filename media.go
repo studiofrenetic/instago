@@ -12,9 +12,8 @@ func (api InstagramAPI) Media(mediaId string) Media {
 }
 
 //Gets a list of popular media at the moment
-func (api InstagramAPI) Popular() []Media {
-	media, _, _ := api.GenericMediaListRequest("media/popular", "", "", 0)
-	return media
+func (api InstagramAPI) Popular() ([]Media, Pagination, error) {
+	return api.GenericMediaListRequest("media/popular", "", "", 0)
 }
 
 //Gets a list of media posted from a certain location recently.
@@ -25,7 +24,7 @@ func (api InstagramAPI) Popular() []Media {
 //long: The longitude to search near
 //
 //distance: (optional = 0) The number of meters to search within
-func (api InstagramAPI) LocationSearch(lat, lng, distance float64) []Media {
+func (api InstagramAPI) LocationSearch(lat, lng, distance float64) ([]Media, Pagination, error) {
 	//Unfortunately I couldn't use GenericMediaListRequest because it takes in location
 	params := getEmptyMap()
 	if distance > 0 {
@@ -39,5 +38,8 @@ func (api InstagramAPI) LocationSearch(lat, lng, distance float64) []Media {
 	for _, media := range data {
 		media_objects = append(media_objects, MediaFromAPI(media))
 	}
-	return media_objects
+	pagination := PaginationFromAPI(results.Object("pagination"))
+	err := api.ErrorFromAPI(results)
+
+	return media_objects, pagination, err
 }

@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/programmingthomas/instago"
+	"github.com/mbelousov/instago"
 	"io/ioutil"
 )
 
@@ -17,19 +17,27 @@ func main() {
 	fmt.Println("Posts at Instagram:")
 
 	//Instagram HQ
-	imagesInstagram := api.LocationPosts("514276", "", "")
-
+	imagesInstagram, pagination, err := api.LocationPosts("514276", "", "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	for _, image := range imagesInstagram {
 		fmt.Println("User:", image.User, "Filter:", image.Filter, "Likes:", image.Likes)
 	}
-
+	fmt.Println(pagination)
 	fmt.Println("===============================")
 	fmt.Println("Locations near the Eiffel Tower")
 
 	//Locations near the Eiffel Tower
-	locationsInParis := api.LocationsNear(48.858844, 2.294351, 0)
+	locationsInParis, pagination, err := api.LocationsNear(48.858844, 2.294351, 0)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	for _, loc := range locationsInParis {
 		fmt.Println("Name:", loc.Name, "Coords:", loc.Latitude, loc.Longitude)
 	}
+	fmt.Println(pagination)
 }

@@ -6,6 +6,11 @@ import (
 	"io/ioutil"
 )
 
+func displayUserList(users []instago.User) {
+	for _, user := range users {
+		fmt.Println("Username:", user.Username, "Full Name:", user.FullName)
+	}
+}
 func main() {
 	//Load the Client ID from a file called config.txt
 	api := instago.InstagramAPI{}
@@ -29,24 +34,22 @@ func main() {
 		fmt.Println("No results")
 		return
 	}
-	for _, user := range users {
-		fmt.Println("Username:", user.Username, "Full Name:", user.FullName)
-	}
+	displayUserList(users)
 	fmt.Println(pagination)
 	//Present basic inforamtion about the user
-	fmt.Println("More detail on @" + users[0].Username)
-	user, err := api.UserDetail(users[0].ID)
+	fmt.Println("@" + users[0].Username + " followers: ")
+	followers, pagination, err := api.UserFollowers(users[0].ID, "")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	displayUserList(followers)
+	fmt.Println("@" + users[0].Username + " follows: ")
+	follows, pagination, err := api.UserFollows(users[0].ID, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	displayUserList(follows)
 
-	fmt.Println("ID:", user.ID)
-	fmt.Println("Username:", user.Username)
-	fmt.Println("Full name:", user.FullName)
-	fmt.Println("Bio:", user.Bio)
-	fmt.Println("Website:", user.Website)
-	fmt.Println("Follows:", user.TotalFollows)
-	fmt.Println("Followers:", user.TotalFollowers)
-	fmt.Println("Media:", user.TotalMedia)
 }

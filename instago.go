@@ -4,6 +4,7 @@ package instago
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -21,28 +22,33 @@ import (
 //ignored (even if the request fails). You should create an InstagramAPI struct with
 //at least one of these values
 type InstagramAPI struct {
-	ClientID    string
-	AccessToken string
+	ClientID           string
+	AccessToken        string
+	RateLimitRemaining int
 }
 
-//Represents an image response from Instagram's servers including key details about the
-//image. Comments are currently not included.
-type Image struct {
-	Filter             string
-	Tags               []string
-	Link               string
-	LowResolution      string
-	Thumbnail          string
-	StandardResolution string
-	User               string
-	UserID             string
-	Name               string
-	Caption            string
-	CreationTime       time.Time
-	ID                 string
-	Likes              int
-	Comments           int
-	Location           Location
+//Represents an media object response from Instagram's servers including key details about the
+//media object. Comments are currently not included.
+type Media struct {
+	Filter                  string
+	Tags                    []string
+	Link                    string
+	Type                    string
+	LowResolution           string
+	Thumbnail               string
+	StandardResolution      string
+	VideoLowBandwidth       string
+	VideoLowResolution      string
+	VideoStandardResolution string
+	User                    string
+	UserID                  string
+	Name                    string
+	Caption                 string
+	CreationTime            time.Time
+	ID                      string
+	Likes                   int
+	Comments                int
+	Location                Location
 }
 
 //Represents a user response from Instagram's servers. This may come from an image,
@@ -54,7 +60,7 @@ type User struct {
 	ProfilePicture string
 	Bio            string
 	Website        string
-	TotalImages    int
+	TotalMedia     int
 	TotalFollows   int
 	TotalFollowers int
 }
@@ -75,12 +81,14 @@ type Location struct {
 	Longitude float64
 }
 
+// Pagination object
 type Pagination struct {
 	NextMaxTagId string
 	NextMaxId    string
 	NextMinId    string
 	MinTagId     string
 	NextUrl      string
+	NextCursor   string
 }
 
 //This will does all GET requests (all Instagram API requests that do not require
@@ -90,11 +98,11 @@ type Pagination struct {
 //endpoint: The api request that you want to do on Instagram
 //
 //params: The parameters you may want to add
-func (api InstagramAPI) DoRequest(endpoint string, params map[string]string) JSON {
+func (api *InstagramAPI) DoRequest(endpoint string, params map[string]string) JSON {
 	var contents []byte
 
 	fullURL := api.GetURLForRequest(endpoint, params)
-	resp, err := http.Get(fullURL)
+	resp, err := api.getResponse(fullURL)
 	if err != nil {
 		contents = []byte("{}")
 	}
@@ -103,11 +111,17 @@ func (api InstagramAPI) DoRequest(endpoint string, params map[string]string) JSO
 	if err != nil {
 		contents = []byte("{}")
 	}
-	//fmt.Println(string(contents))
+	api.RateLimitRemaining = 0
+	api.RateLimitRemaining, _ = strconv.Atoi(resp.Header.Get("X-Ratelimit-Remaining"))
 	var jsonResponse JSON
 	json.Unmarshal(contents, &jsonResponse)
 
 	return jsonResponse
+}
+
+// getResponse will get http response using appropriate method (GAE or HTTP)
+func (api InstagramAPI) getResponse(url string) (*http.Response, error) {
+	return http.Get(url)
 }
 
 //This function will build the request URL so that you can add extra parameters to
@@ -136,50 +150,55 @@ func (api InstagramAPI) GetURLForRequest(endpoint string, params map[string]stri
 	return u.String()
 }
 
-//This will take API a JSON object that includes the details for an image and puts it into
-//the Go data structure for Images.
+//This will take API a JSON object that includes the details for a media object and puts it into
+//the Go data structure for Media.
 //
-//data: a JSON object that represents an image
-func ImageFromAPI(data JSON) Image {
-	var image Image
+//data: a JSON object that represents a media object
+func MediaFromAPI(data JSON) Media {
+	var media Media
 
-	//Basic information on the image
-	image.Filter = data.String("filter")
-	image.Tags = data.StringArray("tags")
-	image.Link = data.String("link")
-	image.ID = data.String("id")
-	image.Likes = data.Object("likes").Int("count")
-	image.Comments = data.Object("comments").Int("count")
+	//Basic information on the media
+	media.Filter = data.String("filter")
+	media.Tags = data.StringArray("tags")
+	media.Type = data.String("type")
+	media.Link = data.String("link")
+	media.ID = data.String("id")
+	media.Likes = data.Object("likes").Int("count")
+	media.Comments = data.Object("comments").Int("count")
 
-	//Image caption
+	//media caption
 	caption := data.Object("caption")
-	image.Caption = caption.String("text")
+	media.Caption = caption.String("text")
 
 	//Creation time
 	t, _ := strconv.ParseInt(data.String("created_time"), 0, 0)
-	image.CreationTime = time.Unix(t, 0)
+	media.CreationTime = time.Unix(t, 0)
 
 	//User detail
 	user := data.Object("user")
-	image.User = user.String("username")
-	image.Name = user.String("full_name")
-	image.UserID = user.String("id")
+	media.User = user.String("username")
+	media.Name = user.String("full_name")
+	media.UserID = user.String("id")
 
 	images := data.Object("images")
 
 	lowRes := images.Object("low_resolution")
-	image.LowResolution = lowRes.String("url")
+	media.LowResolution = lowRes.String("url")
 
 	thumbnail := images.Object("thumbnail")
-	image.Thumbnail = thumbnail.String("url")
+	media.Thumbnail = thumbnail.String("url")
 
 	standardRes := images.Object("standard_resolution")
-	image.StandardResolution = standardRes.String("url")
+	media.StandardResolution = standardRes.String("url")
 
+	videos := data.Object("videos")
+	media.VideoLowBandwidth = videos.Object("low_bandwidth").String("url")
+	media.VideoLowResolution = videos.Object("low_resolution").String("url")
+	media.VideoStandardResolution = videos.Object("standard_resolution").String("url")
 	location := data.Object("location")
-	image.Location = LocationFromAPI(location)
+	media.Location = LocationFromAPI(location)
 
-	return image
+	return media
 }
 
 //Takes a generic location API JSON response and returns a Location
@@ -206,7 +225,7 @@ func UserFromAPI(data JSON) User {
 	user.ProfilePicture = data.String("profile_picture")
 	user.Bio = data.String("bio")
 	user.Website = data.String("website")
-	user.TotalImages = data.Object("counts").Int("media")
+	user.TotalMedia = data.Object("counts").Int("media")
 	user.TotalFollows = data.Object("counts").Int("follows")
 	user.TotalFollowers = data.Object("counts").Int("followed_by")
 	return user
@@ -221,10 +240,24 @@ func PaginationFromAPI(pagination JSON) Pagination {
 	p.NextMinId = pagination.String("next_min_id")
 	p.MinTagId = pagination.String("min_tag_id")
 	p.NextUrl = pagination.String("next_url")
+	p.NextCursor = pagination.String("next_cursor")
 	return p
 }
 
-//Many queries to Instagram's API simply return a list of images (tag, user, location, etc)
+func (api InstagramAPI) ErrorFromAPI(result JSON) error {
+	meta := result.Object("meta")
+	code := meta["code"]
+	if code != 200 {
+		error_type := meta.String("error_type")
+		if error_type != "" {
+			error_message := meta.String("error_message")
+			return errors.New(fmt.Sprintf("%v [code:%v] %v (RateLimitRemaining: %v)", error_type, code, error_message, api.RateLimitRemaining))
+		}
+	}
+	return nil
+}
+
+//Many queries to Instagram's API simply return a list of media objects (tag, user, location, etc)
 //so this function handles the request to simplify things a little. Note that Intago
 //functions provide wrappers around this function so you need not call it, however it is
 //exported in case Instagram adds to their API in the future and you want to add to this
@@ -232,12 +265,12 @@ func PaginationFromAPI(pagination JSON) Pagination {
 //
 //endPoint: The API endpoint, such as /tags/tag/media/recent
 //
-//before: (optional) Search for images before this image ID
+//before: (optional) Search for media objects (posts) before this media ID
 //
-//after: (optional) Search for images after this image ID
+//after: (optional) Search for media objects (posts) after this media ID
 //
-//max: (optional) The great number of images to return (there is an imposed limit on this)
-func (api InstagramAPI) GenericImageListRequest(endPoint, before, after string, max int) []Image {
+//max: (optional) The great number of media objects to return (there is an imposed limit on this)
+func (api InstagramAPI) GenericMediaListRequest(endPoint, before, after string, max int) ([]Media, Pagination, error) {
 	params := getEmptyMap()
 	if max > 0 {
 		params["count"] = fmt.Sprintf("%d", max)
@@ -250,16 +283,19 @@ func (api InstagramAPI) GenericImageListRequest(endPoint, before, after string, 
 	}
 	results := api.DoRequest(endPoint, params)
 	data := results.ObjectArray("data")
-	images := make([]Image, 0)
-	for _, image := range data {
-		images = append(images, ImageFromAPI(image))
+	media_objects := make([]Media, 0)
+	for _, media := range data {
+		media_objects = append(media_objects, MediaFromAPI(media))
 	}
-	return images
+
+	pagination := PaginationFromAPI(results.Object("pagination"))
+	err := api.ErrorFromAPI(results)
+	return media_objects, pagination, err
 }
 
 //Download a file from the given URL and save it to the given file
 //Note that the Instagram API encourages you to take into account the IP of Instagram
-//users, so you shouldn't download user's images with this
+//users, so you shouldn't download user's posts with this
 func Download(url, saveFile string) {
 	out, err := os.Create(saveFile)
 	if err != nil {

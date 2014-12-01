@@ -8,11 +8,11 @@ import (
 //
 //tag: The tag (don't include the # hash) that you want to fetch
 //
-//before: (optional - use "") find photos posted before this ID (use Image.ID)
+//before: (optional - use "") find photos posted before this ID (use Media.ID)
 //
-//after: (optional - use "") find photos posted after this ID (use Image.ID)
-func (api InstagramAPI) TagRecent(tag, before, after string, max int) ([]Image, Pagination) {
-	// return api.GenericImageListRequest("tags/"+tag+"/media/recent", before, after, 0)
+//after: (optional - use "") find photos posted after this ID (use Media.ID)
+func (api InstagramAPI) TagRecent(tag, before, after string, max int) ([]Media, Pagination, error) {
+	// return api.GenericMediaListRequest("tags/"+tag+"/media/recent", before, after, 0)
 	// var max int
 	params := getEmptyMap()
 	if max > 0 {
@@ -27,22 +27,17 @@ func (api InstagramAPI) TagRecent(tag, before, after string, max int) ([]Image, 
 
 	results := api.DoRequest("tags/"+tag+"/media/recent", params)
 	data := results.ObjectArray("data")
-	images := make([]Image, 0)
-	for _, image := range data {
-		images = append(images, ImageFromAPI(image))
+	media_objects := make([]Media, 0)
+	for _, media := range data {
+		media_objects = append(media_objects, MediaFromAPI(media))
 	}
-
-	// log.New(os.Stderr, "ERROR ", results)
-
-	// pagination := Pagination{}
 	pagination := PaginationFromAPI(results.Object("pagination"))
-	// fmt.Println("Pagination:", pagination)
+	err := api.ErrorFromAPI(results)
 
-	return images, pagination
-	// return images
+	return media_objects, pagination, err
 }
 
-//Gets the total number of images on Instagram with a given tag
+//Gets the total number of media objects on Instagram with a given tag
 //
 //tag: a string that represents the tag that you want to search for
 func (api InstagramAPI) TagInfo(tag string) Tag {
@@ -52,10 +47,10 @@ func (api InstagramAPI) TagInfo(tag string) Tag {
 }
 
 //Will fetch the tag along with similar tags from Instagram so you can see the number of
-//images with that tag
+//media objects (posts) with that tag
 //
 //tag: a string that represents the tag you want to search for
-func (api InstagramAPI) TagSearch(tag string) []Tag {
+func (api InstagramAPI) TagSearch(tag string) ([]Tag, Pagination, error) {
 	params := getEmptyMap()
 	params["q"] = tag
 	result := api.DoRequest("tags/search", params)
@@ -63,7 +58,10 @@ func (api InstagramAPI) TagSearch(tag string) []Tag {
 	for _, tag := range result.ObjectArray("data") {
 		tags = append(tags, tagObject(tag))
 	}
-	return tags
+	pagination := PaginationFromAPI(result.Object("pagination"))
+	err := api.ErrorFromAPI(result)
+
+	return tags, pagination, err
 }
 
 //Both TagInfo and TagSearch need to create Tag objects
